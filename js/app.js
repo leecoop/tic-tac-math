@@ -64,6 +64,9 @@
   const winnerSymbol = document.getElementById('winnerSymbol');
   const winnerText = document.getElementById('winnerText');
   const playAgain = document.getElementById('playAgain');
+  const myPlayerInfo = document.getElementById('myPlayerInfo');
+  const myPlayerSymbol = document.getElementById('myPlayerSymbol');
+  const myPlayerName = document.getElementById('myPlayerName');
 
   const winningLines = [
     [0,1,2],[3,4,5],[6,7,8],
@@ -75,6 +78,20 @@
   function coloredName(symbol) {
     const cls = symbol === 'X' ? 'symbol-x' : 'symbol-o';
     return `<span class="${cls}" style="font-weight:800">${displayName(symbol)}</span>`;
+  }
+
+  function updateMyPlayerInfo() {
+    if (!myPlayerInfo) return;
+    if (isOnlineMode && mySymbol) {
+      myPlayerInfo.style.display = 'flex';
+      myPlayerSymbol.textContent = mySymbol;
+      myPlayerSymbol.className = 'my-player-symbol ' + (mySymbol === 'X' ? 'symbol-x' : 'symbol-o');
+      myPlayerName.textContent = displayName(mySymbol);
+    } else if (isOfflineMode) {
+      myPlayerInfo.style.display = 'none';
+    } else {
+      myPlayerInfo.style.display = 'none';
+    }
   }
 
   let board = Array(9).fill('');
@@ -508,6 +525,7 @@
     nameOverlay.classList.remove('active');
     nameOverlay.setAttribute('aria-hidden', 'true');
     isOfflineMode = true;
+    updateMyPlayerInfo();
     setMessage(`${displayName('X')} מתחיל. בחרו משבצת פנויה כדי לקבל תרגיל.`, "info");
   });
 
@@ -552,6 +570,7 @@
   let isOnlineMode = false;
   let wsConnected = false;
   let myOnlineName = '';
+  let mySymbol = null;
 
   const iceServers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -727,6 +746,8 @@
       connectedOverlay.setAttribute('aria-hidden', 'true');
     }
 
+    mySymbol = isHost ? 'X' : 'O';
+
     if (isHost) {
       playerNames.X = myOnlineName || 'שחקן X';
     } else {
@@ -742,6 +763,7 @@
 
     resetRound(true);
     updateTurnBlocking();
+    updateMyPlayerInfo();
     if (isHost) {
       broadcastState();
     }
@@ -926,6 +948,7 @@
       }
     }
     if (isOnlineMode) updateTurnBlocking();
+    updateMyPlayerInfo();
   }
 
   function handleWsClose() {
@@ -986,8 +1009,8 @@
     }
     const myPlayer = isHost ? 'X' : 'O';
     if (currentPlayer !== myPlayer) {
-      turnWaitTitle.textContent = currentPlayer === 'X' ? 'תור שחקן X' : 'תור שחקן O';
       const pName = displayName(currentPlayer);
+      turnWaitTitle.textContent = `תור של ${pName}`;
       turnWaitText.textContent = `${pName} עושה את המהלך שלו... המתן בבקשה.`;
       turnWaitOverlay.classList.add('active');
       turnWaitOverlay.setAttribute('aria-hidden', 'false');

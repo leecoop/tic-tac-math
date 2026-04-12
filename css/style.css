@@ -147,6 +147,31 @@ button, input { font: inherit; }
 .theme-toggle:hover,
 .theme-toggle:focus-visible { transform: translateY(-1px); }
 
+.my-player-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-primary) 15%, var(--color-surface-2));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.my-player-info .my-player-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.my-player-info .my-player-symbol {
+  font-size: var(--text-base);
+  font-weight: 800;
+}
+
+.my-player-info .my-player-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
 .layout {
   display: grid;
   grid-template-columns: 300px 1fr;
