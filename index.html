@@ -914,6 +914,7 @@
         </section>
 
         <section class="panel controls">
+          <button class="btn btn-primary" id="onlineBtn" type="button">משחק מקוון</button>
           <button class="btn btn-secondary" id="resetRound" type="button">סיבוב חדש</button>
           <button class="btn btn-secondary" id="resetAll" type="button">איפוס ניקוד</button>
         </section>
@@ -986,6 +987,55 @@
       <h2 id="winnerTitle">יש מנצח!</h2>
       <p id="winnerText">השחקן X השלים רצף.</p>
       <button class="btn btn-primary" id="playAgain" type="button">משחק נוסף</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="onlineOverlay" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="onlineTitle" style="max-width:420px;width:min(100%,420px);">
+      <h2 id="onlineTitle">משחק מקוון</h2>
+      <div style="display:grid;gap:var(--space-3);">
+        <button class="btn btn-primary" id="createRoomBtn" type="button">יצירת חדר חדש</button>
+        <div style="display:flex;gap:var(--space-2);align-items:center;">
+          <input id="roomCodeInput" type="text" placeholder="קוד חדר" style="flex:1;min-height:48px;border-radius:999px;border:1px solid var(--color-border);padding:0 var(--space-4);text-align:center;font-size:var(--text-base);text-transform:uppercase;background:var(--color-surface);color:var(--color-text);" />
+          <button class="btn btn-secondary" id="joinRoomBtn" type="button">הצטרפות</button>
+        </div>
+      </div>
+      <p class="helper" id="onlineError" style="display:none;color:var(--color-error);"></p>
+      <button class="btn btn-secondary" id="closeOnlineOverlay" type="button" style="margin-top:var(--space-2);">ביטול</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="waitingOverlay" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="waitingTitle" style="max-width:420px;width:min(100%,420px);">
+      <h2 id="waitingTitle">ממתין ליריב</h2>
+      <div style="display:grid;gap:var(--space-3);">
+        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3);text-align:center;">
+          <p style="margin:0 0 var(--space-2);font-size:var(--text-sm);color:var(--color-text-muted);">קוד החדר</p>
+          <p id="roomCodeDisplay" style="margin:0;font-size:var(--text-xl);font-weight:800;letter-spacing:0.1em;color:var(--color-primary);">------</p>
+        </div>
+        <button class="btn btn-secondary" id="copyLinkBtn" type="button">העתקת קישור</button>
+      </div>
+      <p id="waitingStatus" style="margin:var(--space-3) 0 0;color:var(--color-text-muted);font-size:var(--text-sm);">ממתין להתחברות יריב...</p>
+      <button class="btn btn-secondary" id="cancelWaitingBtn" type="button" style="margin-top:var(--space-3);">ביטול</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="connectedOverlay" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="connectedTitle" style="max-width:420px;width:min(100%,420px);">
+      <h2 id="connectedTitle">מחובר</h2>
+      <p id="connectedStatus" style="margin:0;color:var(--color-success);font-weight:700;">היריב התחבר!</p>
+      <div style="display:grid;gap:var(--space-3);margin-top:var(--space-4);">
+        <button class="btn btn-primary" id="startOnlineGame" type="button">התחלת משחק</button>
+        <button class="btn btn-secondary" id="leaveRoomBtn" type="button">עזיבת החדר</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="turnWaitOverlay" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" style="max-width:320px;width:min(100%,320px);">
+      <div style="font-size:3rem;">⏳</div>
+      <h2 id="turnWaitTitle" style="margin:var(--space-3) 0 0;">ממתין ליריב</h2>
+      <p id="turnWaitText" style="margin:var(--space-2) 0 0;color:var(--color-text-muted);">אנא המתן עד שהיריב ישחק...</p>
     </div>
   </div>
 
@@ -1676,6 +1726,482 @@
       });
 
       renderBoard();
+
+      const onlineBtn = document.getElementById('onlineBtn');
+      const onlineOverlay = document.getElementById('onlineOverlay');
+      const createRoomBtn = document.getElementById('createRoomBtn');
+      const joinRoomBtn = document.getElementById('joinRoomBtn');
+      const roomCodeInput = document.getElementById('roomCodeInput');
+      const onlineError = document.getElementById('onlineError');
+      const closeOnlineOverlay = document.getElementById('closeOnlineOverlay');
+      const waitingOverlay = document.getElementById('waitingOverlay');
+      const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+      const copyLinkBtn = document.getElementById('copyLinkBtn');
+      const waitingStatus = document.getElementById('waitingStatus');
+      const cancelWaitingBtn = document.getElementById('cancelWaitingBtn');
+      const connectedOverlay = document.getElementById('connectedOverlay');
+      const connectedStatus = document.getElementById('connectedStatus');
+      const startOnlineGame = document.getElementById('startOnlineGame');
+      const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+
+      let ws = null;
+      let peerConnection = null;
+      let dataChannel = null;
+      let currentRoomCode = null;
+      let isHost = false;
+      let isOnlineMode = false;
+      let wsConnected = false;
+
+      const iceServers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+      function getWsUrl() {
+        const loc = window.location;
+        const protocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${protocol}//${loc.host}`;
+      }
+
+      function connectWs() {
+        return new Promise((resolve, reject) => {
+          ws = new WebSocket(getWsUrl());
+
+          ws.onopen = () => {
+            wsConnected = true;
+            resolve();
+          };
+
+          ws.onclose = () => {
+            wsConnected = false;
+            handleWsClose();
+          };
+
+          ws.onerror = (err) => {
+            reject(err);
+          };
+
+          ws.onmessage = (event) => {
+            try {
+              const msg = JSON.parse(event.data);
+              handleWsMessage(msg);
+            } catch (err) {
+              console.error('Invalid WS message:', err);
+            }
+          };
+        });
+      }
+
+      function sendWs(type, payload = {}) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type, payload }));
+        }
+      }
+
+      function handleWsMessage(msg) {
+        switch (msg.type) {
+          case 'connected':
+            break;
+          case 'roomCreated':
+            currentRoomCode = msg.payload.roomCode;
+            roomCodeDisplay.textContent = currentRoomCode;
+            openWaitingScreen();
+            break;
+          case 'roomJoined':
+            currentRoomCode = msg.payload.roomCode;
+            break;
+          case 'error':
+            showOnlineError(msg.payload.message);
+            break;
+          case 'peerConnected':
+            waitingStatus.textContent = 'היריב התחבר! מתחילים חיבור...';
+            if (isHost) {
+              initWebRTC(true);
+            } else {
+              initWebRTC(false);
+            }
+            break;
+          case 'peerDisconnected':
+            handlePeerDisconnect();
+            break;
+          case 'offer':
+          case 'answer':
+          case 'iceCandidate':
+            handleSignalingMessage(msg);
+            break;
+          case 'gameState':
+            applySyncedState(msg.payload?.state);
+            break;
+        }
+      }
+
+      function showOnlineError(msg) {
+        onlineError.textContent = msg;
+        onlineError.style.display = 'block';
+        setTimeout(() => { onlineError.style.display = 'none'; }, 3000);
+      }
+
+      async function createRoom() {
+        onlineError.style.display = 'none';
+        try {
+          await connectWs();
+          isHost = true;
+          isOnlineMode = true;
+          sendWs('createRoom');
+        } catch (err) {
+          showOnlineError('שגיאת התחברות לשרת');
+        }
+      }
+
+      async function joinRoom(code) {
+        if (!code || code.length < 4) {
+          showOnlineError('יש להזין קוד חדר');
+          return;
+        }
+        onlineError.style.display = 'none';
+        try {
+          await connectWs();
+          isHost = false;
+          isOnlineMode = true;
+          currentRoomCode = code.toUpperCase();
+          sendWs('joinRoom', { roomCode: currentRoomCode });
+          openWaitingScreen();
+        } catch (err) {
+          showOnlineError('שגיאת התחברות לשרת');
+        }
+      }
+
+      function openOnlineOverlay() {
+        onlineOverlay.classList.add('active');
+        onlineOverlay.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeOnlineOverlayFunc() {
+        onlineOverlay.classList.remove('active');
+        onlineOverlay.setAttribute('aria-hidden', 'true');
+        roomCodeInput.value = '';
+        onlineError.style.display = 'none';
+      }
+
+      function openWaitingScreen() {
+        onlineOverlay.classList.remove('active');
+        onlineOverlay.setAttribute('aria-hidden', 'true');
+        waitingOverlay.classList.add('active');
+        waitingOverlay.setAttribute('aria-hidden', 'false');
+        waitingStatus.textContent = isHost ? 'ממתין להתחברות יריב...' : 'מתחבר לחדר...';
+      }
+
+      function closeWaitingScreen() {
+        waitingOverlay.classList.remove('active');
+        waitingOverlay.setAttribute('aria-hidden', 'true');
+        if (ws) { ws.close(); ws = null; }
+        currentRoomCode = null;
+        isHost = false;
+      }
+
+      function openConnectedScreen() {
+        waitingOverlay.classList.remove('active');
+        waitingOverlay.setAttribute('aria-hidden', 'true');
+        startOnlineGameHandler();
+      }
+
+      async function startOnlineGameHandler() {
+        if (connectedOverlay.classList.contains('active')) {
+          connectedOverlay.classList.remove('active');
+          connectedOverlay.setAttribute('aria-hidden', 'true');
+        }
+
+        playerNames.X = isHost ? (nameXInput.value.trim() || "שחקן X") : "שחקן X";
+        playerNames.O = isHost ? (nameOInput.value.trim() || "שחקן O") : "שחקן O";
+
+        if (turnName) {
+          turnName.textContent = displayName('X');
+          turnName.className = 'turn-player-name symbol-x';
+        }
+        if (scoreNameX) scoreNameX.textContent = displayName('X');
+        if (scoreNameO) scoreNameO.textContent = displayName('O');
+
+        resetRound(true);
+        updateTurnBlocking();
+        if (isHost) {
+          broadcastState();
+        }
+        setMessage(`משחק מקוון התחיל! ${displayName('X')} פותח.`, 'info');
+      }
+
+      function closeConnectedScreen() {
+        connectedOverlay.classList.remove('active');
+        connectedOverlay.setAttribute('aria-hidden', 'true');
+        if (peerConnection) {
+          peerConnection.close();
+          peerConnection = null;
+        }
+        if (ws) { ws.close(); ws = null; }
+        currentRoomCode = null;
+        isOnlineMode = false;
+        isHost = false;
+      }
+
+      async function initWebRTC(isInitiator) {
+        if (peerConnection) {
+          peerConnection.close();
+        }
+
+        peerConnection = new RTCPeerConnection(iceServers);
+
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            sendWs('iceCandidate', { candidate: event.candidate });
+          }
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+          if (peerConnection.connectionState === 'connected') {
+            openConnectedScreen();
+          }
+        };
+
+        if (isInitiator) {
+          dataChannel = peerConnection.createDataChannel('game');
+          setupDataChannel();
+
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+          sendWs('offer', { sdp: peerConnection.localDescription });
+        } else {
+          peerConnection.ondatachannel = (event) => {
+            dataChannel = event.channel;
+            setupDataChannel();
+          };
+        }
+      }
+
+      function setupDataChannel() {
+        dataChannel.onopen = () => {
+          if (!isHost) {
+            openConnectedScreen();
+          }
+        };
+
+        dataChannel.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'gameState' && data.state) {
+              applySyncedState(data.state);
+            }
+          } catch (err) {
+            console.error('DataChannel error:', err);
+          }
+        };
+
+        dataChannel.onclose = () => {
+          handlePeerDisconnect();
+        };
+      }
+
+      async function handleSignalingMessage(msg) {
+        if (!peerConnection) {
+          peerConnection = new RTCPeerConnection(iceServers);
+
+          peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+              sendWs('iceCandidate', { candidate: event.candidate });
+            }
+          };
+
+          peerConnection.onconnectionstatechange = () => {
+            if (peerConnection.connectionState === 'connected') {
+              openConnectedScreen();
+            }
+          };
+
+          peerConnection.ondatachannel = (event) => {
+            dataChannel = event.channel;
+            setupDataChannel();
+          };
+        }
+
+        if (msg.type === 'offer' && msg.payload?.sdp) {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(msg.payload.sdp));
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          sendWs('answer', { sdp: peerConnection.localDescription });
+        } else if (msg.type === 'answer' && msg.payload?.sdp) {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(msg.payload.sdp));
+        } else if (msg.type === 'iceCandidate' && msg.payload?.candidate) {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(msg.payload.candidate));
+        }
+      }
+
+      function syncGameState(state) {
+        sendWs('gameState', { state });
+        if (isOnlineMode) {
+          setTimeout(updateTurnBlocking, 200);
+        }
+      }
+
+      function broadcastState() {
+        const state = {
+          board,
+          currentPlayer,
+          scores,
+          pendingMove,
+          currentProblem,
+          locked,
+          gameMode
+        };
+        syncGameState(state);
+      }
+
+      function applySyncedState(state) {
+        if (!state) return;
+        board = state.board || Array(9).fill('');
+        currentPlayer = state.currentPlayer || 'X';
+        scores = state.scores || { X: 0, O: 0 };
+        pendingMove = state.pendingMove || null;
+        currentProblem = state.currentProblem || null;
+        locked = state.locked || false;
+
+        if (state.gameMode) {
+          gameMode = state.gameMode;
+          document.querySelectorAll('#modeGrid .mode-btn').forEach(b => {
+            b.classList.toggle('mode-btn-active', b.dataset.mode === gameMode);
+          });
+          updateModeDisplay();
+        }
+
+        updateScores();
+        turnBadge.textContent = currentPlayer;
+        if (turnName) {
+          turnName.textContent = displayName(currentPlayer);
+          turnName.className = 'turn-player-name ' + (currentPlayer === 'X' ? 'symbol-x' : 'symbol-o');
+        }
+
+        const winner = getWinner();
+        if (winner) {
+          renderBoard(winner.line);
+          locked = true;
+        } else if (board.every(Boolean)) {
+          renderBoard();
+          locked = true;
+        } else {
+          renderBoard();
+        }
+
+        if (pendingMove) {
+          setMessage(`${displayName(pendingMove.player)}, פתרו את התרגיל כדי לזכות במשבצת.`, 'info');
+        } else if (locked) {
+          if (winner) {
+            setMessage(`${displayName(winner.player)} ��יצח!`, 'success');
+          } else {
+            setMessage('הלוח מלא, זהו תיקו.', 'info');
+          }
+        }
+        if (isOnlineMode) updateTurnBlocking();
+      }
+
+      function handleWsClose() {
+        if (isOnlineMode) {
+          handlePeerDisconnect();
+        }
+      }
+
+      function handlePeerDisconnect() {
+        closeConnectedScreen();
+        closeWaitingScreen();
+        if (dataChannel) { dataChannel.close(); dataChannel = null; }
+        if (peerConnection) { peerConnection.close(); peerConnection = null; }
+        isOnlineMode = false;
+        setMessage('היריב התנתק מהמשחק.', 'error');
+      }
+
+      
+
+      function copyShareLink() {
+        const url = `${window.location.origin}${window.location.pathname}?room=${currentRoomCode}`;
+        navigator.clipboard.writeText(url).then(() => {
+          copyLinkBtn.textContent = 'הועתק!';
+          setTimeout(() => { copyLinkBtn.textContent = 'העתקת קישור'; }, 2000);
+        }).catch(() => {
+          prompt('העתיקו את הקישור:', url);
+        });
+      }
+
+      function checkUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        const roomCode = params.get('room');
+        if (roomCode && roomCode.length >= 4) {
+          setTimeout(() => {
+            joinRoom(roomCode);
+          }, 500);
+        }
+      }
+
+      onlineBtn.addEventListener('click', openOnlineOverlay);
+      createRoomBtn.addEventListener('click', createRoom);
+      joinRoomBtn.addEventListener('click', () => joinRoom(roomCodeInput.value));
+      roomCodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(roomCodeInput.value); });
+      closeOnlineOverlay.addEventListener('click', closeOnlineOverlayFunc);
+      onlineOverlay.addEventListener('click', (e) => { if (e.target === onlineOverlay) closeOnlineOverlayFunc(); });
+      copyLinkBtn.addEventListener('click', copyShareLink);
+      cancelWaitingBtn.addEventListener('click', closeWaitingScreen);
+      startOnlineGame.addEventListener('click', startOnlineGameHandler);
+      leaveRoomBtn.addEventListener('click', closeConnectedScreen);
+
+      const turnWaitOverlay = document.getElementById('turnWaitOverlay');
+      const turnWaitTitle = document.getElementById('turnWaitTitle');
+      const turnWaitText = document.getElementById('turnWaitText');
+
+      function updateTurnBlocking() {
+        if (!isOnlineMode) {
+          turnWaitOverlay.classList.remove('active');
+          turnWaitOverlay.setAttribute('aria-hidden', 'true');
+          return;
+        }
+        const myPlayer = isHost ? 'X' : 'O';
+        if (currentPlayer !== myPlayer) {
+          turnWaitTitle.textContent = currentPlayer === 'X' ? 'תור שחקן X' : 'תור שחקן O';
+          const pName = displayName(currentPlayer);
+          turnWaitText.textContent = `${pName} עושה את המהלך שלו... המתן בבקשה.`;
+          turnWaitOverlay.classList.add('active');
+          turnWaitOverlay.setAttribute('aria-hidden', 'false');
+        } else {
+          turnWaitOverlay.classList.remove('active');
+          turnWaitOverlay.setAttribute('aria-hidden', 'true');
+        }
+      }
+
+      const originalChooseCell = chooseCell;
+      chooseCell = function(index) {
+        if (isOnlineMode) {
+          const myPlayer = isHost ? 'X' : 'O';
+          if (currentPlayer !== myPlayer) {
+            updateTurnBlocking();
+            return;
+          }
+          turnWaitOverlay.classList.remove('active');
+          turnWaitOverlay.setAttribute('aria-hidden', 'true');
+        }
+        originalChooseCell(index);
+        if (isOnlineMode && currentProblem) {
+          setTimeout(broadcastState, 100);
+        }
+      };
+
+      const originalFinalizeMove = finalizeMove;
+      finalizeMove = function(targetPlayer) {
+        originalFinalizeMove(targetPlayer);
+        if (isOnlineMode) {
+          setTimeout(broadcastState, 100);
+        }
+      };
+
+      const originalResetRound = resetRound;
+      resetRound = function(keepScores) {
+        originalResetRound(keepScores);
+        if (isOnlineMode) {
+          setTimeout(broadcastState, 100);
+        }
+      };
+
+      checkUrlParams();
     })();
   </script>
 </body>

@@ -1,0 +1,12 @@
+{
+  "name": "tic-tac-math",
+  "version": "1.0.0",
+  "description": "Online multiplayer Tic-Tac-Math game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.20.0"
+  }
+}
