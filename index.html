@@ -74,7 +74,6 @@
         </section>
 
         <section class="panel controls">
-          <button class="btn btn-primary" id="onlineBtn" type="button">משחק מקוון</button>
           <button class="btn btn-secondary" id="resetRound" type="button">סיבוב חדש</button>
           <button class="btn btn-secondary" id="resetAll" type="button">איפוס ניקוד</button>
         </section>
@@ -88,7 +87,17 @@
   </main>
 
 
-    <div class="overlay active" id="nameOverlay" aria-hidden="false">
+    <div class="overlay active" id="gameModeOverlay" aria-hidden="false">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="gameModeTitle" style="max-width:420px;width:min(100%,420px);">
+      <h2 id="gameModeTitle">בחרו סוג משחק</h2>
+      <div style="display:grid;gap:var(--space-3);">
+        <button class="btn btn-primary" id="playOnlineBtn" type="button">משחק מקוון</button>
+        <button class="btn btn-secondary" id="playOfflineBtn" type="button">משחק מקומי</button>
+      </div>
+    </div>
+  </div>
+
+    <div class="overlay" id="nameOverlay" aria-hidden="false">
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="nameTitle" style="max-width:520px;width:min(100%,520px);">
       <h2 id="nameTitle">הגדרת המשחק</h2>
 
@@ -153,7 +162,10 @@
   <div class="overlay" id="onlineOverlay" aria-hidden="true">
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="onlineTitle" style="max-width:420px;width:min(100%,420px);">
       <h2 id="onlineTitle">משחק מקוון</h2>
-      <div style="display:grid;gap:var(--space-3);">
+      <div style="display:grid;gap:var(--space-3);text-align:right">
+        <label style="font-weight:600;font-size:var(--text-sm);">השם שלך
+          <input id="onlineName" type="text" placeholder="השם שלך" style="margin-top:0.25rem;border-radius:999px;border:1px solid var(--color-border);padding:0.5rem 1rem;width:100%;background:var(--color-surface);color:var(--color-text);" />
+        </label>
         <button class="btn btn-primary" id="createRoomBtn" type="button">יצירת חדר חדש</button>
         <div style="display:flex;gap:var(--space-2);align-items:center;">
           <input id="roomCodeInput" type="text" placeholder="קוד חדר" style="flex:1;min-height:48px;border-radius:999px;border:1px solid var(--color-border);padding:0 var(--space-4);text-align:center;font-size:var(--text-base);text-transform:uppercase;background:var(--color-surface);color:var(--color-text);" />
@@ -161,6 +173,7 @@
         </div>
       </div>
       <p class="helper" id="onlineError" style="display:none;color:var(--color-error);"></p>
+      <button class="btn btn-secondary" id="backToModeBtn" type="button" style="margin-top:var(--space-2);">חזרה</button>
       <button class="btn btn-secondary" id="closeOnlineOverlay" type="button" style="margin-top:var(--space-2);">ביטול</button>
     </div>
   </div>

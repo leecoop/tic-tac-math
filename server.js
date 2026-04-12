@@ -83,10 +83,10 @@ function handleMessage(ws, message) {
 
   switch (type) {
     case 'createRoom':
-      handleCreateRoom(ws);
+      handleCreateRoom(ws, payload);
       break;
     case 'joinRoom':
-      handleJoinRoom(ws, payload?.roomCode);
+      handleJoinRoom(ws, payload);
       break;
     case 'offer':
     case 'answer':
@@ -104,9 +104,10 @@ function handleMessage(ws, message) {
   }
 }
 
-function handleCreateRoom(ws) {
+function handleCreateRoom(ws, payload) {
   const room = createRoom();
   room.host = ws;
+  room.hostName = payload?.name || 'שחקן X';
   ws.roomCode = room.code;
   ws.isHost = true;
   
@@ -118,7 +119,8 @@ function handleCreateRoom(ws) {
   console.log(`Room created: ${room.code} by host`);
 }
 
-function handleJoinRoom(ws, roomCode) {
+function handleJoinRoom(ws, payload) {
+  const { roomCode, name } = payload || {};
   if (!roomCode) {
     ws.send(JSON.stringify({
       type: 'error',
@@ -145,6 +147,7 @@ function handleJoinRoom(ws, roomCode) {
   }
 
   room.guest = ws;
+  room.guestName = name || 'שחקן O';
   ws.roomCode = roomCode;
   ws.isHost = false;
 
@@ -153,7 +156,10 @@ function handleJoinRoom(ws, roomCode) {
     payload: { roomCode }
   }));
 
-  broadcastToRoom(room, { type: 'peerConnected' });
+  broadcastToRoom(room, { type: 'peerConnected', payload: { 
+    hostName: room.hostName, 
+    guestName: room.guestName 
+  }});
 
   console.log(`Player joined room: ${roomCode}`);
 }

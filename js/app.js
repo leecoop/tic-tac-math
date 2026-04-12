@@ -15,10 +15,35 @@
     renderThemeIcon();
   });
 
+  const gameModeOverlay = document.getElementById('gameModeOverlay');
+  const playOnlineBtn = document.getElementById('playOnlineBtn');
+  const playOfflineBtn = document.getElementById('playOfflineBtn');
+
+  let isOnlineModeInitial = false;
+  let isOfflineMode = false;
+
   const nameOverlay = document.getElementById('nameOverlay');
   const nameXInput = document.getElementById('nameX');
   const nameOInput = document.getElementById('nameO');
   const startGameBtn = document.getElementById('startGame');
+
+  let gameType = null;
+
+  playOnlineBtn.addEventListener('click', () => {
+    gameType = 'online';
+    gameModeOverlay.classList.remove('active');
+    gameModeOverlay.setAttribute('aria-hidden', 'true');
+    openOnlineOverlay();
+  });
+
+  playOfflineBtn.addEventListener('click', () => {
+    gameType = 'offline';
+    gameModeOverlay.classList.remove('active');
+    gameModeOverlay.setAttribute('aria-hidden', 'true');
+    isOfflineMode = true;
+    nameOverlay.classList.add('active');
+    nameOverlay.setAttribute('aria-hidden', 'false');
+  });
 
   let gameMode = 'addition';
   let playerNames = { X: 'שחקן X', O: 'שחקן O' };
@@ -482,6 +507,7 @@
     updateModeDisplay();
     nameOverlay.classList.remove('active');
     nameOverlay.setAttribute('aria-hidden', 'true');
+    isOfflineMode = true;
     setMessage(`${displayName('X')} מתחיל. בחרו משבצת פנויה כדי לקבל תרגיל.`, "info");
   });
 
@@ -500,13 +526,14 @@
 
   updateScores();
 
-  const onlineBtn = document.getElementById('onlineBtn');
   const onlineOverlay = document.getElementById('onlineOverlay');
+  const onlineNameInput = document.getElementById('onlineName');
   const createRoomBtn = document.getElementById('createRoomBtn');
   const joinRoomBtn = document.getElementById('joinRoomBtn');
   const roomCodeInput = document.getElementById('roomCodeInput');
   const onlineError = document.getElementById('onlineError');
   const closeOnlineOverlay = document.getElementById('closeOnlineOverlay');
+  const backToModeBtn = document.getElementById('backToModeBtn');
   const waitingOverlay = document.getElementById('waitingOverlay');
   const roomCodeDisplay = document.getElementById('roomCodeDisplay');
   const copyLinkBtn = document.getElementById('copyLinkBtn');
@@ -524,6 +551,7 @@
   let isHost = false;
   let isOnlineMode = false;
   let wsConnected = false;
+  let myOnlineName = '';
 
   const iceServers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -585,6 +613,18 @@
         break;
       case 'peerConnected':
         waitingStatus.textContent = 'היריב התחבר! מתחילים חיבור...';
+        if (msg.payload) {
+          if (isHost && msg.payload.guestName) {
+            playerNames.O = msg.payload.guestName;
+          } else if (!isHost && msg.payload.hostName) {
+            playerNames.X = msg.payload.hostName;
+          }
+        }
+        if (isHost) {
+          playerNames.X = myOnlineName || 'שחקן X';
+        } else {
+          playerNames.O = myOnlineName || 'שחקן O';
+        }
         if (isHost) {
           initWebRTC(true);
         } else {
@@ -613,11 +653,12 @@
 
   async function createRoom() {
     onlineError.style.display = 'none';
+    myOnlineName = onlineNameInput.value.trim() || 'שחקן';
     try {
       await connectWs();
       isHost = true;
       isOnlineMode = true;
-      sendWs('createRoom');
+      sendWs('createRoom', { name: myOnlineName });
     } catch (err) {
       showOnlineError('שגיאת התחברות לשרת');
     }
@@ -629,12 +670,13 @@
       return;
     }
     onlineError.style.display = 'none';
+    myOnlineName = onlineNameInput.value.trim() || 'שחקן';
     try {
       await connectWs();
       isHost = false;
       isOnlineMode = true;
       currentRoomCode = code.toUpperCase();
-      sendWs('joinRoom', { roomCode: currentRoomCode });
+      sendWs('joinRoom', { roomCode: currentRoomCode, name: myOnlineName });
       openWaitingScreen();
     } catch (err) {
       showOnlineError('שגיאת התחברות לשרת');
@@ -651,6 +693,8 @@
     onlineOverlay.setAttribute('aria-hidden', 'true');
     roomCodeInput.value = '';
     onlineError.style.display = 'none';
+    gameModeOverlay.classList.add('active');
+    gameModeOverlay.setAttribute('aria-hidden', 'false');
   }
 
   function openWaitingScreen() {
@@ -667,6 +711,8 @@
     if (ws) { ws.close(); ws = null; }
     currentRoomCode = null;
     isHost = false;
+    gameModeOverlay.classList.add('active');
+    gameModeOverlay.setAttribute('aria-hidden', 'false');
   }
 
   function openConnectedScreen() {
@@ -681,8 +727,11 @@
       connectedOverlay.setAttribute('aria-hidden', 'true');
     }
 
-    playerNames.X = isHost ? (nameXInput.value.trim() || "שחקן X") : "שחקן X";
-    playerNames.O = isHost ? (nameOInput.value.trim() || "שחקן O") : "שחקן O";
+    if (isHost) {
+      playerNames.X = myOnlineName || 'שחקן X';
+    } else {
+      playerNames.O = myOnlineName || 'שחקן O';
+    }
 
     if (turnName) {
       turnName.textContent = displayName('X');
@@ -710,6 +759,8 @@
     currentRoomCode = null;
     isOnlineMode = false;
     isHost = false;
+    gameModeOverlay.classList.add('active');
+    gameModeOverlay.setAttribute('aria-hidden', 'false');
   }
 
   async function initWebRTC(isInitiator) {
@@ -818,7 +869,8 @@
       pendingMove,
       currentProblem,
       locked,
-      gameMode
+      gameMode,
+      playerNames
     };
     syncGameState(state);
   }
@@ -831,6 +883,12 @@
     pendingMove = state.pendingMove || null;
     currentProblem = state.currentProblem || null;
     locked = state.locked || false;
+
+    if (state.playerNames) {
+      playerNames = { ...playerNames, ...state.playerNames };
+      if (scoreNameX) scoreNameX.textContent = displayName('X');
+      if (scoreNameO) scoreNameO.textContent = displayName('O');
+    }
 
     if (state.gameMode) {
       gameMode = state.gameMode;
@@ -905,11 +963,11 @@
     }
   }
 
-  onlineBtn.addEventListener('click', openOnlineOverlay);
   createRoomBtn.addEventListener('click', createRoom);
   joinRoomBtn.addEventListener('click', () => joinRoom(roomCodeInput.value));
   roomCodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(roomCodeInput.value); });
   closeOnlineOverlay.addEventListener('click', closeOnlineOverlayFunc);
+  backToModeBtn.addEventListener('click', closeOnlineOverlayFunc);
   onlineOverlay.addEventListener('click', (e) => { if (e.target === onlineOverlay) closeOnlineOverlayFunc(); });
   copyLinkBtn.addEventListener('click', copyShareLink);
   cancelWaitingBtn.addEventListener('click', closeWaitingScreen);
