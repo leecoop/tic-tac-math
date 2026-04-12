@@ -764,6 +764,7 @@
     resetRound(true);
     updateTurnBlocking();
     updateMyPlayerInfo();
+    updateHostControls();
     if (isHost) {
       broadcastState();
     }
@@ -949,6 +950,7 @@
     }
     if (isOnlineMode) updateTurnBlocking();
     updateMyPlayerInfo();
+    updateHostControls();
   }
 
   function handleWsClose() {
@@ -1017,6 +1019,27 @@
     } else {
       turnWaitOverlay.classList.remove('active');
       turnWaitOverlay.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function updateHostControls() {
+    if (!isOnlineMode) {
+      resetRoundBtn.disabled = false;
+      resetAllBtn.disabled = false;
+      if (changeModeBtn) changeModeBtn.disabled = false;
+      if (modeIndicatorBtn) modeIndicatorBtn.disabled = false;
+      return;
+    }
+    if (isHost) {
+      resetRoundBtn.disabled = false;
+      resetAllBtn.disabled = false;
+      if (changeModeBtn) changeModeBtn.disabled = false;
+      if (modeIndicatorBtn) modeIndicatorBtn.disabled = false;
+    } else {
+      resetRoundBtn.disabled = true;
+      resetAllBtn.disabled = true;
+      if (changeModeBtn) changeModeBtn.disabled = true;
+      if (modeIndicatorBtn) modeIndicatorBtn.disabled = true;
     }
   }
 
