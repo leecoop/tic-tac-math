@@ -45,13 +45,17 @@
             <span class="turn-badge" id="turnBadge">X</span>
             <span id="turnName" class="turn-player-name symbol-x">שחקן X</span>
           </div>
-          <button type="button" class="mode-indicator mode-indicator-btn" id="modeIndicatorBtn" title="לחץ לשינוי סוג תרגיל" aria-label="שינוי סוג תרגיל">
-            <span class="mode-indicator-label">סוג תרגיל ✎</span>
+          <button type="button" class="mode-indicator mode-indicator-btn" id="modeIndicatorBtn" title="לחץ לשינוי הגדרות" aria-label="שינוי הגדרות">
+            <span class="mode-indicator-label">הגדרות ✎</span>
             <span class="mode-indicator-value" id="modeDisplay">
               <span class="mode-indicator-icon" id="modeDisplayIcon">½</span>
               <span id="modeDisplayText">שברים</span>
             </span>
           </button>
+          <div class="timer-display" id="timerDisplay" style="display:none;">
+            <span class="timer-bar"><span class="timer-bar-fill" id="timerBarFill"></span></span>
+            <span class="timer-text" id="timerText">60</span>
+          </div>
           <p class="helper">לחץ על ריבוע פנוי, פתר את התרגיל, ורק אז המשבצת תוכרע.</p>
         </section>
 
@@ -123,7 +127,7 @@
             <span class="mode-icon">+</span>
             <span>חיבור</span>
           </button>
-          <button type="button" class="mode-btn" data-mode="subtraction">
+          <button type="button" class="mode-btn mode-btn-active" data-mode="subtraction">
             <span class="mode-icon">−</span>
             <span>חיסור</span>
           </button>
@@ -140,7 +144,13 @@
             <span>שברים</span>
           </button>
         </div>
+        <p class="helper" style="font-size:var(--text-xs);color:var(--color-text-muted);">ניתן לבחור מספר סוגים (כולל שברים).</p>
       </div>
+
+      <label class="timer-option" style="display:flex;align-items:center;gap:0.5rem;margin-top:var(--space-3);cursor:pointer;">
+        <input type="checkbox" id="timerEnabled" checked style="width:1.25rem;height:1.25rem;" />
+        <span style="font-weight:600;font-size:var(--text-sm);">מסך 60 שניות לכל תרגיל</span>
+      </label>
 
       <button class="btn btn-primary" id="startGame" type="button">התחלת המשחק</button>
     </div>
@@ -148,9 +158,13 @@
 
     <div class="overlay" id="modeOnlyOverlay" aria-hidden="true">
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modeOnlyTitle" style="max-width:420px;width:min(100%,420px);">
-      <h2 id="modeOnlyTitle">שינוי סוג תרגיל</h2>
-      <p style="margin:0;color:var(--color-text-muted);font-size:var(--text-sm);">בחירה חדשה תחול מהתרגיל הבא. הניקוד והלוח לא ישתנו.</p>
+      <h2 id="modeOnlyTitle">הגדרות משחק</h2>
+      <p style="margin:0 0 var(--space-3);color:var(--color-text-muted);font-size:var(--text-sm);">בחירה חדשה תחול מהתרגיל הבא. הניקוד והלוח לא ישתנו.</p>
       <div class="mode-grid" id="modeGridInGame"></div>
+      <label class="timer-option" style="display:flex;align-items:center;gap:0.5rem;margin-top:var(--space-3);cursor:pointer;">
+        <input type="checkbox" id="timerEnabledInGame" checked style="width:1.25rem;height:1.25rem;" />
+        <span style="font-weight:600;font-size:var(--text-sm);">מסך 60 שניות לכל תרגיל</span>
+      </label>
       <button class="btn btn-primary" id="saveModeBtn" type="button">אישור</button>
     </div>
   </div>

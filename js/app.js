@@ -45,7 +45,7 @@
     nameOverlay.setAttribute('aria-hidden', 'false');
   });
 
-  let gameMode = 'addition';
+  let gameModes = ['addition'];
   let playerNames = { X: 'שחקן X', O: 'שחקן O' };
 
   const boardEl = document.getElementById('board');
@@ -101,6 +101,67 @@
   let pendingMove = null;
   let currentProblem = null;
 
+  const timerEnabledInput = document.getElementById('timerEnabled');
+  const TIMER_DURATION = 60;
+  let timerEnabled = true;
+  let timerInterval = null;
+  let timeLeft = TIMER_DURATION;
+
+  const timerDisplay = document.getElementById('timerDisplay');
+  const timerText = document.getElementById('timerText');
+  const timerBarFill = document.getElementById('timerBarFill');
+  const timerEnabledInGameInput = document.getElementById('timerEnabledInGame');
+  const modeGridInGame2 = document.getElementById('modeGridInGame2');
+
+  let autoResetTimeout = null;
+
+  function updateTimerEnabled() {
+    timerEnabled = timerEnabledInput?.checked;
+  }
+
+  if (timerEnabledInput) {
+    timerEnabledInput.addEventListener('change', updateTimerEnabled);
+  }
+if (timerEnabledInGameInput) {
+    timerEnabledInGameInput.addEventListener('change', updateTimerEnabled);
+  }
+  if (timerEnabledInGameInput) {
+    timerEnabledInGameInput.addEventListener('change', updateTimerEnabled);
+  }
+
+  function startTimer() {
+    if (!timerEnabled || !timerDisplay) return;
+    clearInterval(timerInterval);
+    timeLeft = TIMER_DURATION;
+    timerDisplay.style.display = 'flex';
+    timerText.textContent = timeLeft;
+    timerBarFill.style.width = '100%';
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      timerText.textContent = timeLeft;
+      timerBarFill.style.width = (timeLeft / TIMER_DURATION * 100) + '%';
+      if (timeLeft <= 10) timerBarFill.classList.add('warning');
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        handleTimerExpired();
+      }
+    }, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    if (timerDisplay) timerDisplay.style.display = 'none';
+  }
+
+  function handleTimerExpired() {
+    if (!pendingMove || locked) return;
+    const current = pendingMove.player;
+    const opponent = current === 'X' ? 'O' : 'X';
+    stopTimer();
+    setMessage(`הזמן נגמר! המשבצת עוברת ל${displayName(opponent)}.`, 'error');
+    finalizeMove(opponent);
+  }
+
   function gcd(a, b) {
     a = Math.abs(a);
     b = Math.abs(b);
@@ -142,9 +203,47 @@
     return simplifyFraction(numerator, denominator);
   }
 
+  function getRandomMode() {
+    if (!gameModes.length) return 'addition';
+    return gameModes[Math.floor(Math.random() * gameModes.length)];
+  }
+
+  function generateMixedFractionProblem() {
+    const operations = ['+', '-', '×'];
+    let a = randomFraction();
+    let b = randomFraction();
+    let operation = operations[Math.floor(Math.random() * operations.length)];
+
+    if (operation === '-') {
+      const decA = a.numerator / a.denominator;
+      const decB = b.numerator / b.denominator;
+      if (Math.abs(decA - decB) < 0.00001) {
+        operation = Math.random() < 0.5 ? '+' : '×';
+      } else if (decA < decB) {
+        const tmp = a; a = b; b = tmp;
+      }
+    }
+
+    let result;
+    if (operation === '+') {
+      result = simplifyFraction(a.numerator * b.denominator + b.numerator * a.denominator, a.denominator * b.denominator);
+    } else if (operation === '-') {
+      result = simplifyFraction(a.numerator * b.denominator - b.numerator * a.denominator, a.denominator * b.denominator);
+    } else {
+      result = simplifyFraction(a.numerator * b.numerator, a.denominator * b.denominator);
+    }
+
+    return {
+      text: `${fractionToString(a)} ${operation} ${fractionToString(b)} = ?`,
+      answer: fractionToString(result),
+      type: 'fraction'
+    };
+  }
+
   function generateProblem() {
-    if (gameMode === 'fractions') return generateFractionProblem();
-    return generateNumberProblem();
+    const mode = getRandomMode();
+    if (mode === 'fractions') { return generateMixedFractionProblem(); }
+    return generateNumberProblem(mode);
   }
 
   function generateFractionProblem() {
@@ -179,25 +278,25 @@
     };
   }
 
-  function generateNumberProblem() {
+  function generateNumberProblem(mode) {
     let a, b, result, text;
 
-    if (gameMode === 'addition') {
+    if (mode === 'addition') {
       a = Math.floor(Math.random() * 50) + 1;
       b = Math.floor(Math.random() * 50) + 1;
       result = a + b;
       text = `${a} + ${b} = ?`;
-    } else if (gameMode === 'subtraction') {
+    } else if (mode === 'subtraction') {
       a = Math.floor(Math.random() * 50) + 10;
       b = Math.floor(Math.random() * (a - 1)) + 1;
       result = a - b;
       text = `${a} − ${b} = ?`;
-    } else if (gameMode === 'multiplication') {
+    } else if (mode === 'multiplication') {
       a = Math.floor(Math.random() * 10) + 2;
       b = Math.floor(Math.random() * 10) + 2;
       result = a * b;
       text = `${a} × ${b} = ?`;
-    } else {
+    } else if (mode === 'division') {
       b = Math.floor(Math.random() * 9) + 2;
       result = Math.floor(Math.random() * 10) + 2;
       a = b * result;
@@ -306,11 +405,13 @@
     currentProblem = generateProblem();
     answerInput.value = '';
     setMessage(`${displayName(currentPlayer)}, פתרו את התרגיל כדי לזכות במשבצת.`, 'info');
+    startTimer();
     renderBoard();
   }
 
   function finalizeMove(targetPlayer) {
     if (!pendingMove) return;
+    stopTimer();
     board[pendingMove.index] = targetPlayer;
     pendingMove = null;
     currentProblem = null;
@@ -329,7 +430,8 @@
     if (board.every(Boolean)) {
       renderBoard();
       locked = true;
-      setMessage('הלוח מלא, זהו תיקו. פתחו סיבוב חדש.', 'info');
+      setMessage('הלוח מלא, זהו תיקו. סיבוב חדש יתחיל בעוד 10 שניות...', 'info');
+      setTimeout(() => resetRound(true), 10000);
       return;
     }
 
@@ -395,18 +497,22 @@
   function resetRound(keepScores = true) {
     if (!keepScores) { scores = { X: 0, O: 0 }; updateScores(); }
     board = Array(9).fill('');
-    currentPlayer = 'X';
+    currentPlayer = Math.random() < 0.5 ? 'X' : 'O';
     locked = false;
     pendingMove = null;
     currentProblem = null;
+    if (autoResetTimeout) {
+      clearTimeout(autoResetTimeout);
+      autoResetTimeout = null;
+    }
     turnBadge.textContent = currentPlayer;
     if (turnName) {
-      turnName.textContent = displayName("X");
-      turnName.className = 'turn-player-name symbol-x';
+      turnName.textContent = displayName(currentPlayer);
+      turnName.className = 'turn-player-name symbol-' + currentPlayer.toLowerCase();
     }
     answerInput.value = '';
     hideWinner();
-    setMessage('סיבוב חדש התחיל. שחקן X פותח.', 'info');
+    setMessage(`סיבוב חדש התחיל. ${displayName(currentPlayer)} פותח.`, 'info');
     if (!keepScores) {
       scores = { X: 0, O: 0 };
       updateScores();
@@ -422,8 +528,15 @@
     fractions:     { icon: '½', label: 'שברים' },
   };
 
+  function getModeDisplayInfo() {
+    if (gameModes.length === 1) {
+      return modeLabels[gameModes[0]] || modeLabels.fractions;
+    }
+    return { icon: '⚄', label: gameModes.length + ' סוגים' };
+  }
+
   function updateModeDisplay() {
-    const info = modeLabels[gameMode] || modeLabels.fractions;
+    const info = getModeDisplayInfo();
     const iconEl = document.getElementById('modeDisplayIcon');
     const textEl = document.getElementById('modeDisplayText');
     if (iconEl) iconEl.textContent = info.icon;
@@ -449,19 +562,51 @@
     modeOptions.forEach(({ mode, icon, label }) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'mode-btn' + (gameMode === mode ? ' mode-btn-active' : '');
+      btn.className = 'mode-btn' + (gameModes.includes(mode) ? ' mode-btn-active' : '');
       btn.dataset.mode = mode;
       btn.innerHTML = `<span class="mode-icon">${icon}</span><span>${label}</span>`;
       btn.addEventListener('click', () => {
-        modeGridInGame.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('mode-btn-active'));
-        btn.classList.add('mode-btn-active');
+        btn.classList.toggle('mode-btn-active');
+        const anyActive = modeGridInGame.querySelector('.mode-btn-active');
+        if (!anyActive) btn.classList.add('mode-btn-active');
       });
       modeGridInGame.appendChild(btn);
     });
   }
 
+  function buildModeGridInGame() {
+    if (!modeGridInGame2) return;
+    modeGridInGame2.innerHTML = '';
+    modeOptions.forEach(({ mode, icon, label }) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mode-btn mode-btn-small' + (gameModes.includes(mode) ? ' mode-btn-active' : '');
+      btn.dataset.mode = mode;
+      btn.innerHTML = `<span class="mode-icon">${icon}</span>`;
+      btn.title = label;
+      btn.addEventListener('click', () => {
+        btn.classList.toggle('mode-btn-active');
+        const anyActive = modeGridInGame2.querySelector('.mode-btn-active');
+        if (!anyActive) btn.classList.add('mode-btn-active');
+        gameModes = [];
+        modeGridInGame2.querySelectorAll('.mode-btn-active').forEach(b => {
+          gameModes.push(b.dataset.mode);
+        });
+        const mainGrid = document.getElementById('modeGrid');
+        if (mainGrid) {
+          mainGrid.querySelectorAll('.mode-btn').forEach(b => {
+            b.classList.toggle('mode-btn-active', gameModes.includes(b.dataset.mode));
+          });
+        }
+        updateModeDisplay();
+      });
+      modeGridInGame2.appendChild(btn);
+    });
+  }
+
   function openModeOverlay() {
     buildInGameModeGrid();
+    if (timerEnabledInGameInput) timerEnabledInGameInput.checked = timerEnabled;
     modeOnlyOverlay.classList.add('active');
     modeOnlyOverlay.setAttribute('aria-hidden', 'false');
   }
@@ -472,23 +617,41 @@
   });
 
   saveModeBtn.addEventListener('click', () => {
-    const active = modeGridInGame.querySelector('.mode-btn-active');
-    if (active) {
-      gameMode = active.dataset.mode;
-      document.querySelectorAll('#modeGrid .mode-btn').forEach(b => {
-        b.classList.toggle('mode-btn-active', b.dataset.mode === gameMode);
-      });
-      const helperEl = document.getElementById('answerHelper');
-      if (helperEl) {
-        helperEl.textContent = gameMode === 'fractions'
-          ? 'יש לכתוב תשובה בפורמט של שבר מצומצם, למשל 5/6.'
-          : 'יש להזין מספר שלם בלבד.';
+    gameModes = [];
+    modeGridInGame.querySelectorAll('.mode-btn-active').forEach(b => {
+      gameModes.push(b.dataset.mode);
+    });
+    if (!gameModes.length) {
+      const first = modeGridInGame.querySelector('.mode-btn');
+      if (first) {
+        first.classList.add('mode-btn-active');
+        gameModes = [first.dataset.mode];
       }
     }
+    document.querySelectorAll('#modeGrid .mode-btn').forEach(b => {
+      const isActive = gameModes.includes(b.dataset.mode);
+      b.classList.toggle('mode-btn-active', isActive);
+    });
+    const helperEl = document.getElementById('answerHelper');
+    if (helperEl) {
+      helperEl.textContent = gameModes.includes('fractions')
+        ? 'יש לכתוב תשובה בפורמט של שבר מצומצם, למשל 5/6.'
+        : 'יש להזין מספר שלם בלבד.';
+    }
     updateModeDisplay();
+    if (timerEnabledInGameInput) {
+      timerEnabled = timerEnabledInGameInput.checked;
+      timerEnabledInput.checked = timerEnabled;
+    }
+    updateTimerCheckboxStates();
     modeOnlyOverlay.classList.remove('active');
     modeOnlyOverlay.setAttribute('aria-hidden', 'true');
   });
+
+  function updateTimerCheckboxStates() {
+    timerEnabledInput.checked = timerEnabled;
+    if (timerEnabledInGameInput) timerEnabledInGameInput.checked = timerEnabled;
+  }
 
   modeOnlyOverlay.addEventListener('click', (e) => {
     if (e.target === modeOnlyOverlay) {
@@ -501,12 +664,20 @@
   const modeGrid = document.getElementById('modeGrid');
   modeGrid.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      modeGrid.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('mode-btn-active'));
-      btn.classList.add('mode-btn-active');
-      gameMode = btn.dataset.mode;
+      btn.classList.toggle('mode-btn-active');
+      const fractionsBtn = modeGrid.querySelector('[data-mode="fractions"]');
+      const hasFractions = fractionsBtn && fractionsBtn.classList.contains('mode-btn-active');
+      gameModes = [];
+      modeGrid.querySelectorAll('.mode-btn.mode-btn-active').forEach(b => {
+        gameModes.push(b.dataset.mode);
+      });
+      if (!gameModes.length) {
+        btn.classList.add('mode-btn-active');
+        gameModes = [btn.dataset.mode];
+      }
       const helperEl = document.getElementById('answerHelper');
       if (helperEl) {
-        helperEl.textContent = gameMode === 'fractions'
+        helperEl.textContent = hasFractions
           ? 'יש לכתוב תשובה בפורמט של שבר מצומצם, למשל 5/6.'
           : 'יש להזין מספר שלם בלבד.';
       }
@@ -515,9 +686,10 @@
   startGameBtn.addEventListener('click', () => {
     playerNames.X = nameXInput.value.trim() || "שחקן X";
     playerNames.O = nameOInput.value.trim() || "שחקן O";
+    const firstPlayer = Math.random() < 0.5 ? 'X' : 'O';
     if (turnName) {
-      turnName.textContent = displayName('X');
-      turnName.className = 'turn-player-name symbol-x';
+      turnName.textContent = displayName(firstPlayer);
+      turnName.className = 'turn-player-name symbol-' + firstPlayer.toLowerCase();
     }
     if (scoreNameX) scoreNameX.textContent = displayName('X');
     if (scoreNameO) scoreNameO.textContent = displayName('O');
@@ -526,7 +698,7 @@
     nameOverlay.setAttribute('aria-hidden', 'true');
     isOfflineMode = true;
     updateMyPlayerInfo();
-    setMessage(`${displayName('X')} מתחיל. בחרו משבצת פנויה כדי לקבל תרגיל.`, "info");
+    resetRound(true);
   });
 
   renderBoard();
@@ -892,8 +1064,9 @@
       pendingMove,
       currentProblem,
       locked,
-      gameMode,
-      playerNames
+      gameModes,
+      playerNames,
+      timerEnabled
     };
     syncGameState(state);
   }
@@ -913,12 +1086,24 @@
       if (scoreNameO) scoreNameO.textContent = displayName('O');
     }
 
-    if (state.gameMode) {
-      gameMode = state.gameMode;
+    if (state.gameModes) {
+      gameModes = state.gameModes;
       document.querySelectorAll('#modeGrid .mode-btn').forEach(b => {
-        b.classList.toggle('mode-btn-active', b.dataset.mode === gameMode);
+        b.classList.toggle('mode-btn-active', gameModes.includes(b.dataset.mode));
       });
       updateModeDisplay();
+    } else if (state.gameMode) {
+      gameModes = [state.gameMode];
+      document.querySelectorAll('#modeGrid .mode-btn').forEach(b => {
+        b.classList.toggle('mode-btn-active', b.dataset.mode === state.gameMode);
+      });
+      updateModeDisplay();
+    }
+
+    if (state.timerEnabled !== undefined) {
+      timerEnabled = state.timerEnabled;
+      if (timerEnabledInput) timerEnabledInput.checked = timerEnabled;
+      if (timerEnabledInGameInput) timerEnabledInGameInput.checked = timerEnabled;
     }
 
     updateScores();
@@ -945,7 +1130,13 @@
       if (winner) {
         setMessage(`${displayName(winner.player)} ניצח!`, 'success');
       } else {
-        setMessage('הלוח מלא, זהו תיקו.', 'info');
+        setMessage('הלוח מלא, זהו תיקו. סיבוב חדש יתחיל בעוד 10 שניות...', 'info');
+        if (isHost && !autoResetTimeout) {
+          autoResetTimeout = setTimeout(() => {
+            autoResetTimeout = null;
+            resetRound(true);
+          }, 10000);
+        }
       }
     }
     if (isOnlineMode) updateTurnBlocking();
