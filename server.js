@@ -115,8 +115,6 @@ function handleCreateRoom(ws, payload) {
     type: 'roomCreated',
     payload: { roomCode: room.code }
   }));
-  
-  console.log(`Room created: ${room.code} by host`);
 }
 
 function handleJoinRoom(ws, payload) {
@@ -251,11 +249,6 @@ const interval = setInterval(() => {
 
 wss.on('close', () => {
   clearInterval(interval);
-});
-
-wss.on('connection', (ws, req) => {
-  const clientIp = req.socket.remoteAddress;
-  console.log(`New connection from ${clientIp}`);
 });
 
 server.listen(PORT, '0.0.0.0', () => {

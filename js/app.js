@@ -817,6 +817,7 @@ if (timerEnabledInGameInput) {
         break;
       case 'roomJoined':
         currentRoomCode = msg.payload.roomCode;
+        openWaitingScreen();
         break;
       case 'error':
         showOnlineError(msg.payload.message);
