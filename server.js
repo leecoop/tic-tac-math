@@ -7,6 +7,8 @@ const PORT = process.env.PORT || 8080;
 
 const rooms = new Map();
 
+console.log(`[SERVER] Starting on port ${PORT}, PID: ${process.pid}`);
+
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -115,10 +117,13 @@ function handleCreateRoom(ws, payload) {
     type: 'roomCreated',
     payload: { roomCode: room.code }
   }));
+  
+  console.log(`[SERVER] Room created: ${room.code}, total rooms: ${rooms.size}`);
 }
 
 function handleJoinRoom(ws, payload) {
   const { roomCode, name } = payload || {};
+  console.log(`[SERVER] Join attempt: ${roomCode}, available rooms: ${JSON.stringify([...rooms.keys()])}`);
   if (!roomCode) {
     ws.send(JSON.stringify({
       type: 'error',
@@ -249,6 +254,11 @@ const interval = setInterval(() => {
 
 wss.on('close', () => {
   clearInterval(interval);
+});
+
+wss.on('connection', (ws, req) => {
+  const clientIp = req.socket.remoteAddress;
+  console.log(`New connection from ${clientIp}`);
 });
 
 server.listen(PORT, '0.0.0.0', () => {
