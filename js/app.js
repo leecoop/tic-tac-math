@@ -1179,9 +1179,13 @@ if (timerEnabledInGameInput) {
     const params = new URLSearchParams(window.location.search);
     const roomCode = params.get('room');
     if (roomCode && roomCode.length >= 4) {
+      gameModeOverlay.classList.remove('active');
+      gameModeOverlay.setAttribute('aria-hidden', 'true');
+      openOnlineOverlay();
       setTimeout(() => {
-        joinRoom(roomCode);
-      }, 500);
+        roomCodeInput.value = roomCode;
+        roomCodeInput.focus();
+      }, 300);
     }
   }
 
