@@ -153,6 +153,7 @@
       </label>
 
       <button class="btn btn-primary" id="startGame" type="button">התחלת המשחק</button>
+      <button class="btn btn-secondary" id="backFromOffline" type="button" style="margin-top:var(--space-2);">חזרה</button>
     </div>
   </div>
 
@@ -179,21 +180,20 @@
   </div>
 
   <div class="overlay" id="onlineOverlay" aria-hidden="true">
-    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="onlineTitle" style="max-width:420px;width:min(100%,420px);">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="onlineTitle" style="max-width:560px;width:min(100%,560px);">
       <h2 id="onlineTitle">משחק מקוון</h2>
       <div style="display:grid;gap:var(--space-3);text-align:right">
         <label style="font-weight:600;font-size:var(--text-sm);">השם שלך
           <input id="onlineName" type="text" placeholder="השם שלך" style="margin-top:0.25rem;border-radius:999px;border:1px solid var(--color-border);padding:0.5rem 1rem;width:100%;background:var(--color-surface);color:var(--color-text);" />
         </label>
-        <button class="btn btn-primary" id="createRoomBtn" type="button">יצירת חדר חדש</button>
-        <div style="display:flex;gap:var(--space-2);align-items:center;">
-          <input id="roomCodeInput" type="text" placeholder="קוד חדר" style="flex:1;min-height:48px;border-radius:999px;border:1px solid var(--color-border);padding:0 var(--space-4);text-align:center;font-size:var(--text-base);text-transform:uppercase;background:var(--color-surface);color:var(--color-text);" />
+        <div style="display:flex;gap:var(--space-2);">
+          <button class="btn btn-primary" id="createRoomBtn" type="button" style="flex:1;">יצירת חדר חדש</button>
+          <input id="roomCodeInput" type="text" placeholder="קוד חדר" style="flex:1;border-radius:999px;border:1px solid var(--color-border);padding:0.5rem 1rem;text-align:center;font-size:var(--text-base);text-transform:uppercase;background:var(--color-surface);color:var(--color-text);" />
           <button class="btn btn-secondary" id="joinRoomBtn" type="button">הצטרפות</button>
         </div>
       </div>
       <p class="helper" id="onlineError" style="display:none;color:var(--color-error);"></p>
-      <button class="btn btn-secondary" id="backToModeBtn" type="button" style="margin-top:var(--space-2);">חזרה</button>
-      <button class="btn btn-secondary" id="closeOnlineOverlay" type="button" style="margin-top:var(--space-2);">ביטול</button>
+      <button class="btn btn-secondary" id="closeOnlineOverlay" type="button" style="margin-top:var(--space-2);">חזרה</button>
     </div>
   </div>
 
@@ -207,7 +207,6 @@
         </div>
         <button class="btn btn-secondary" id="copyLinkBtn" type="button">העתקת קישור</button>
       </div>
-      <p id="waitingStatus" style="margin:var(--space-3) 0 0;color:var(--color-text-muted);font-size:var(--text-sm);">ממתין להתחברות יריב...</p>
       <button class="btn btn-secondary" id="cancelWaitingBtn" type="button" style="margin-top:var(--space-3);">ביטול</button>
     </div>
   </div>

@@ -683,9 +683,20 @@ if (timerEnabledInGameInput) {
       }
     });
   });
+  const backFromOfflineBtn = document.getElementById('backFromOffline');
+
+  const savedNameX = localStorage.getItem('playerNameX');
+  const savedNameO = localStorage.getItem('playerNameO');
+  if (savedNameX) nameXInput.value = savedNameX;
+  if (savedNameO) nameOInput.value = savedNameO;
+
   startGameBtn.addEventListener('click', () => {
-    playerNames.X = nameXInput.value.trim() || "שחקן X";
-    playerNames.O = nameOInput.value.trim() || "שחקן O";
+    const nameX = nameXInput.value.trim();
+    const nameO = nameOInput.value.trim();
+    playerNames.X = nameX || "שחקן X";
+    playerNames.O = nameO || "שחקן O";
+    localStorage.setItem('playerNameX', playerNames.X);
+    localStorage.setItem('playerNameO', playerNames.O);
     const firstPlayer = Math.random() < 0.5 ? 'X' : 'O';
     if (turnName) {
       turnName.textContent = displayName(firstPlayer);
@@ -700,6 +711,15 @@ if (timerEnabledInGameInput) {
     updateMyPlayerInfo();
     resetRound(true);
   });
+
+  if (backFromOfflineBtn) {
+    backFromOfflineBtn.addEventListener('click', () => {
+      nameOverlay.classList.remove('active');
+      nameOverlay.setAttribute('aria-hidden', 'true');
+      gameModeOverlay.classList.add('active');
+      gameModeOverlay.setAttribute('aria-hidden', 'false');
+    });
+  }
 
   renderBoard();
 
@@ -723,7 +743,6 @@ if (timerEnabledInGameInput) {
   const roomCodeInput = document.getElementById('roomCodeInput');
   const onlineError = document.getElementById('onlineError');
   const closeOnlineOverlay = document.getElementById('closeOnlineOverlay');
-  const backToModeBtn = document.getElementById('backToModeBtn');
   const waitingOverlay = document.getElementById('waitingOverlay');
   const roomCodeDisplay = document.getElementById('roomCodeDisplay');
   const copyLinkBtn = document.getElementById('copyLinkBtn');
@@ -845,6 +864,7 @@ if (timerEnabledInGameInput) {
   async function createRoom() {
     onlineError.style.display = 'none';
     myOnlineName = onlineNameInput.value.trim() || 'שחקן';
+    localStorage.setItem('playerNameOnline', myOnlineName);
     try {
       await connectWs();
       isHost = true;
@@ -862,6 +882,7 @@ if (timerEnabledInGameInput) {
     }
     onlineError.style.display = 'none';
     myOnlineName = onlineNameInput.value.trim() || 'שחקן';
+    localStorage.setItem('playerNameOnline', myOnlineName);
     try {
       await connectWs();
       isHost = false;
@@ -1193,8 +1214,10 @@ if (timerEnabledInGameInput) {
   joinRoomBtn.addEventListener('click', () => joinRoom(roomCodeInput.value));
   roomCodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(roomCodeInput.value); });
   closeOnlineOverlay.addEventListener('click', closeOnlineOverlayFunc);
-  backToModeBtn.addEventListener('click', closeOnlineOverlayFunc);
   onlineOverlay.addEventListener('click', (e) => { if (e.target === onlineOverlay) closeOnlineOverlayFunc(); });
+  
+  const savedOnlineName = localStorage.getItem('playerNameOnline');
+  if (savedOnlineName) onlineNameInput.value = savedOnlineName;
   copyLinkBtn.addEventListener('click', copyShareLink);
   cancelWaitingBtn.addEventListener('click', closeWaitingScreen);
   startOnlineGame.addEventListener('click', startOnlineGameHandler);
