@@ -1161,12 +1161,18 @@ if (timerEnabledInGameInput) {
 
   function copyShareLink() {
     const url = `${window.location.origin}${window.location.pathname}?room=${currentRoomCode}`;
-    navigator.clipboard.writeText(url).then(() => {
-      copyLinkBtn.textContent = 'הועתק!';
-      setTimeout(() => { copyLinkBtn.textContent = 'העתקת קישור'; }, 2000);
-    }).catch(() => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        copyLinkBtn.textContent = 'הועתק!';
+        setTimeout(() => { copyLinkBtn.textContent = 'העתקת קישור'; }, 2000);
+      }).catch(() => {
+        copyLinkBtn.blur();
+        prompt('העתיקו את הקישור:', url);
+      });
+    } else {
+      copyLinkBtn.blur();
       prompt('העתיקו את הקישור:', url);
-    });
+    }
   }
 
   function checkUrlParams() {

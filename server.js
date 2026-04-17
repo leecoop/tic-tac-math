@@ -209,7 +209,10 @@ function handleLeaveRoom(ws) {
 }
 
 const server = http.createServer((req, res) => {
-  const filePath = path.join(__dirname, req.url === '/' ? '/index.html' : req.url);
+  let urlPath = req.url.split('?')[0];
+  if (urlPath === '/') urlPath = '/index.html';
+  
+  const filePath = path.join(__dirname, urlPath);
   const ext = path.extname(filePath);
   const contentType = {
     '.html': 'text/html',
@@ -250,6 +253,11 @@ wss.on('close', () => {
   clearInterval(interval);
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+wss.on('connection', (ws, req) => {
+  const clientIp = req.socket.remoteAddress;
+  console.log(`New connection from ${clientIp}`);
+});
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
